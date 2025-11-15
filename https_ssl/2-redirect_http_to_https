@@ -34,15 +34,26 @@ defaults
         errorfile 503 /etc/haproxy/errors/503.http
         errorfile 504 /etc/haproxy/errors/504.http
 
-frontend www.cprogramming.tech
-        mode http
-        bind :80
-        bind :443 ssl crt /etc/letsencrypt/live/www.cprogramming.tech/combined.pem
-        http-request redirect scheme https code 301 unless { ssl_fc }
-        default_backend cprogram_servers
+# HTTP frontend: redirect all HTTP traffic to HTTPS
+frontend http_front
+    bind *:80
+    mode http
+    # Redirect HTTP → HTTPS with 301 for www.jamesjames.tech
+    acl host_www hdr(host) -i www.jamesjames.tech
+    redirect scheme https code 301 if !{ ssl_fc } host_www
 
+# HTTPS frontend: serve SSL traffic
+frontend https_front
+    bind *:443 ssl crt /etc/letsencrypt/live/www.jamesjames.tech/haproxy.pem
+    mode http
+    option forwardfor
+    acl host_www hdr(host) -i www.jamesjames.tech
+    use_backend cprogram_servers if host_www
+
+# Backend servers
 backend cprogram_servers
-        mode http
-        balance roundrobin
-        server 6936-web-01 52.207.233.85:80 check
-        server 6936-web-02 44.210.116.102:80 check
+    mode http
+    balance roundrobin
+    option httpchk GET /
+    server 6936-web-01 52.207.233.85:80 check
+    server 6936-web-02 44.210.116.102:80 check
