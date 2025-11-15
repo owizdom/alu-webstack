@@ -1,24 +1,12 @@
 #!/usr/bin/env bash
-# Function to print subdomain information
-print_subdomain_info() {
-    local domain="$1"
-    local subdomain="$2"
-    local record_type="$3"
-    local destination="$4"
-
-    echo "The subdomain $subdomain is a $record_type record and points to $destination"
-}
-
-# Function to perform DNS lookup
+# Function to perform DNS lookup and use awk for formatting
 perform_dns_lookup() {
     local domain="$1"
     local subdomain="$2"
 
-    # Use dig to perform DNS lookup and extract relevant information using awk
+    # Use dig to perform DNS lookup and format the output using awk
     dig +short "$subdomain.$domain" | awk -v subdomain="$subdomain" \
-        -v record_type="$3" \
-        -v destination="$4" \
-        '{print_subdomain_info("'"$domain"'", subdomain, record_type, destination)}'
+        '{if ($0 == "") print "No record found for " subdomain; else print "The subdomain " subdomain " is a A record and points to " $0}'
 }
 
 # Main script
@@ -26,17 +14,17 @@ main() {
     local domain="$1"
     local subdomain="$2"
 
-    # Default subdomains
+    # Default subdomains order
     subdomains=("www" "lb-01" "web-01" "web-02")
 
     if [ -z "$subdomain" ]; then
         # If no specific subdomain provided, loop through default subdomains
         for sub in "${subdomains[@]}"; do
-            perform_dns_lookup "$domain" "$sub" "A" "IP-ADDRESS"  # Replace "IP-ADDRESS" with the actual IP address
+            perform_dns_lookup "$domain" "$sub"
         done
     else
         # If a specific subdomain is provided, perform DNS lookup for that subdomain only
-        perform_dns_lookup "$domain" "$subdomain" "A" "IP-ADDRESS"  # Replace "IP-ADDRESS" with the actual IP address
+        perform_dns_lookup "$domain" "$subdomain"
     fi
 }
 
@@ -47,3 +35,4 @@ if [ "$#" -lt 1 ]; then
 fi
 
 main "$1" "$2"
+
